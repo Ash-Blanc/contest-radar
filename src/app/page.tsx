@@ -4,11 +4,14 @@ import React, { useState, useEffect } from "react";
 import { Contest, PlatformType, PrizeTier, ParallelSearchResponse, TinyFishSearchApiResponse } from "@/types/contest";
 import { initialContests } from "@/lib/contest-store";
 import { ContestCard } from "@/components/ContestCard";
+import { ContestTableView } from "@/components/ContestTableView";
 import { DetailInspector } from "@/components/DetailInspector";
 import { LiveSearchOmnibox } from "@/components/LiveSearchOmnibox";
 import { ContestFilters } from "@/components/ContestFilters";
 import { ParallelExecutionDrawer } from "@/components/ParallelExecutionDrawer";
 import { AddContestModal } from "@/components/AddContestModal";
+import { CommandPalette } from "@/components/CommandPalette";
+import { StatsBento } from "@/components/StatsBento";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatUSD } from "@/lib/utils";
@@ -24,7 +27,8 @@ import {
   ExternalLink,
   ShieldCheck,
   Code2,
-  CheckCircle2,
+  Command,
+  Star,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -34,16 +38,42 @@ export default function HomePage() {
   const [selectedTier, setSelectedTier] = useState<PrizeTier | "all">("all");
   const [selectedFormat, setSelectedFormat] = useState<"all" | "online" | "in-person" | "hybrid">("all");
   const [onlyVerified, setOnlyVerified] = useState(false);
+  const [onlyBookmarked, setOnlyBookmarked] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [isLoadingSearch, setIsLoadingSearch] = useState(false);
   const [isRefreshingLive, setIsRefreshingLive] = useState(false);
   const [isDeepResearching, setIsDeepResearching] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   const [parallelData, setParallelData] = useState<ParallelSearchResponse | null>(null);
   const [tinyfishData, setTinyfishData] = useState<TinyFishSearchApiResponse | null>(null);
   const [aiInsights, setAiInsights] = useState<string[]>([]);
+
+  // Load bookmarks from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("contest_radar_bookmarks");
+      if (saved) {
+        setBookmarkedIds(new Set(JSON.parse(saved)));
+      }
+    } catch {}
+  }, []);
+
+  const toggleBookmark = (contestId: string) => {
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(contestId)) next.delete(contestId);
+      else next.add(contestId);
+      try {
+        localStorage.setItem("contest_radar_bookmarks", JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  };
 
   // Fetch live contests from CLIST and Codeforces on load
   const loadLiveContests = async () => {
@@ -68,11 +98,17 @@ export default function HomePage() {
     loadLiveContests();
   }, []);
 
-  // Calculate live stats
-  const totalPrizePool = contests.reduce((sum, c) => sum + (c.prizePoolUSD || 0), 0);
-  const megaContestsCount = contests.filter((c) => c.prizeTier === "mega").length;
-  const majorContestsCount = contests.filter((c) => c.prizeTier === "major").length;
-  const onlineContestsCount = contests.filter((c) => c.format === "online" || c.format === "virtual").length;
+  // Keyboard shortcut for ⌘K / Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleSearch = async (query: string, mode: "turbo" | "fast" | "advanced") => {
     setSearchQuery(query);
@@ -146,6 +182,7 @@ export default function HomePage() {
     if (selectedTier !== "all" && c.prizeTier !== selectedTier) return false;
     if (selectedFormat !== "all" && c.format !== selectedFormat) return false;
     if (onlyVerified && !c.isVerifiedPrize) return false;
+    if (onlyBookmarked && !bookmarkedIds.has(c.id)) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const match =
@@ -161,11 +198,11 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-amber-500/30 selection:text-amber-200">
       {/* Top Navbar in Coss.com/ui Style */}
-      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)]">
-              <Radar className="w-5 h-5 text-zinc-950 animate-spin" style={{ animationDuration: "12s" }} />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)]">
+              <Radar className="w-5 h-5 text-zinc-950 animate-spin" style={{ animationDuration: "14s" }} />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -182,26 +219,18 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="hidden lg:flex items-center gap-3 text-xs font-mono">
-            <div className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center gap-2">
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-zinc-400">Active Pool:</span>
-              <span className="text-amber-300 font-bold">{formatUSD(totalPrizePool)}</span>
-            </div>
+          {/* Center Command Palette Trigger Button */}
+          <button
+            onClick={() => setIsCommandPaletteOpen(true)}
+            className="hidden md:flex items-center gap-3 px-3.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-xs font-mono text-zinc-400 transition-colors shadow-sm"
+          >
+            <span>Search or command...</span>
+            <kbd className="flex items-center gap-0.5 text-[10px] bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800 text-zinc-400">
+              <Command className="w-3 h-3" /> K
+            </kbd>
+          </button>
 
-            <div className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1.5 text-emerald-400 bg-emerald-950/40 px-2 py-1 rounded border border-emerald-800/50">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>CLIST + CF: Live</span>
-              </span>
-              <span className="flex items-center gap-1.5 text-sky-400 bg-sky-950/40 px-2 py-1 rounded border border-sky-800/50">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-                <span>Parallel: Fast</span>
-              </span>
-            </div>
-          </div>
-
+          {/* Action Bar */}
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -219,10 +248,11 @@ export default function HomePage() {
               variant="outline"
               size="sm"
               onClick={() => setIsAddModalOpen(true)}
-              className="font-mono text-xs hidden sm:inline-flex"
+              className="font-mono text-xs"
             >
               <Plus className="w-3.5 h-3.5 mr-1 text-emerald-400" />
-              <span>Ingest Link</span>
+              <span className="hidden sm:inline">Ingest Link</span>
+              <span className="sm:hidden">Ingest</span>
             </Button>
 
             <a
@@ -232,7 +262,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-mono text-zinc-300 transition-colors"
             >
               <Code2 className="w-3.5 h-3.5 text-red-400" />
-              <span className="hidden md:inline">CF #157611</span>
+              <span className="hidden lg:inline">CF #157611</span>
               <ExternalLink className="w-3 h-3 text-zinc-500" />
             </a>
           </div>
@@ -241,6 +271,9 @@ export default function HomePage() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Stats Bento Box */}
+        <StatsBento contests={contests} />
+
         {/* Hero Omnibox Search */}
         <LiveSearchOmnibox
           onSearch={handleSearch}
@@ -283,17 +316,22 @@ export default function HomePage() {
           onSelectFormat={setSelectedFormat}
           onlyVerified={onlyVerified}
           onToggleVerified={setOnlyVerified}
+          onlyBookmarked={onlyBookmarked}
+          onToggleBookmarked={setOnlyBookmarked}
+          bookmarkedCount={bookmarkedIds.size}
+          viewMode={viewMode}
+          onToggleViewMode={setViewMode}
           contestCounts={{
             total: filteredContests.length,
-            mega: megaContestsCount,
-            major: majorContestsCount,
-            online: onlineContestsCount,
+            mega: contests.filter((c) => c.prizeTier === "mega").length,
+            major: contests.filter((c) => c.prizeTier === "major").length,
+            online: contests.filter((c) => c.format === "online" || c.format === "virtual").length,
           }}
         />
 
         {/* Split-Pane Results Grid (Parallel.ai UI pattern) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Contest Cards Stream (7 cols) */}
+          {/* Left Column: Contest Cards Stream or Table (7 cols) */}
           <div className="lg:col-span-7 space-y-4">
             <div className="flex items-center justify-between text-xs font-mono text-zinc-400 px-1">
               <span>
@@ -303,7 +341,7 @@ export default function HomePage() {
             </div>
 
             {filteredContests.length === 0 ? (
-              <div className="p-12 text-center border border-dashed border-zinc-800 rounded-xl bg-zinc-900/30 space-y-3">
+              <div className="p-12 text-center border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/30 space-y-3">
                 <Trophy className="w-8 h-8 text-zinc-600 mx-auto" />
                 <h4 className="text-sm font-semibold text-zinc-300 font-mono">No matching contests found</h4>
                 <p className="text-xs text-zinc-500 max-w-sm mx-auto">
@@ -316,6 +354,7 @@ export default function HomePage() {
                     setSelectedPlatform("all");
                     setSelectedTier("all");
                     setSelectedFormat("all");
+                    setOnlyBookmarked(false);
                     setSearchQuery("");
                   }}
                   className="font-mono text-xs"
@@ -323,16 +362,26 @@ export default function HomePage() {
                   Reset All Filters
                 </Button>
               </div>
-            ) : (
+            ) : viewMode === "cards" ? (
               filteredContests.map((contest) => (
                 <ContestCard
                   key={contest.id}
                   contest={contest}
                   isSelected={selectedContest?.id === contest.id}
+                  isBookmarked={bookmarkedIds.has(contest.id)}
                   onSelect={(c) => setSelectedContest(c)}
+                  onToggleBookmark={toggleBookmark}
                   onDeepResearch={handleDeepResearch}
                 />
               ))
+            ) : (
+              <ContestTableView
+                contests={filteredContests}
+                selectedContestId={selectedContest?.id}
+                bookmarkedIds={bookmarkedIds}
+                onSelect={(c) => setSelectedContest(c)}
+                onToggleBookmark={toggleBookmark}
+              />
             )}
           </div>
 
@@ -369,6 +418,16 @@ export default function HomePage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onContestAdded={handleContestAdded}
+      />
+
+      {/* Command Palette Modal (⌘K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        contests={contests}
+        onSelectContest={(c) => setSelectedContest(c)}
+        onOpenAddModal={() => setIsAddModalOpen(true)}
+        onRefreshLive={loadLiveContests}
       />
     </div>
   );
