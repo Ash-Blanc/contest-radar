@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ⚡ ContestRadar — Prized CP / DSA / Informatics Live Tracker
 
-## Getting Started
+> Built on top of **[coss.com/ui](https://coss.com/ui)** &bull; Powered by **[TinyFish.ai](https://tinyfish.ai)** & **[Parallel.ai](https://parallel.ai)** search and extraction infrastructure.
 
-First, run the development server:
+Never miss cash-prized, high-stakes competitive programming, data structure, and informatics contests again.
 
+---
+
+## 🚀 Key Features
+
+1. **TinyFish.ai Search & Cloud Browser Fetch API**
+   - Live query searching across Codeforces blogs, AtCoder announcements, and contest forums with recency filters (`recency_minutes`).
+   - Noise-free markdown extraction using TinyFish Fetch (`POST https://api.fetch.tinyfish.ai`) to parse prize pools, eligibility, and schedules directly from URLs (e.g. `https://codeforces.com/blog/entry/157611`).
+
+2. **Parallel.ai Multi-Stream Agent & Basis Grounding**
+   - Multi-query parallel web retrieval (`POST https://api.parallel.ai/v1/search`) with sub-second execution modes:
+     - ⚡ **Turbo Mode** (~180ms)
+     - 🚀 **Fast Mode** (~340ms)
+     - 🔬 **Deep Mode** (~850ms)
+   - Basis verifiability: all prize claims backed by token-dense excerpts and calibrated confidence scores.
+   - Deep Research Task agent: runs strategic preparation analysis and breakdown of winners.
+
+3. **coss.com/ui Design Language**
+   - High-density dark mode design with monospace timing chips, subtle borders, and micro-interactions.
+   - Split-pane layout: Live feed with interactive GenUI contest cards on the left, Evidence & Prize Inspector on the right.
+   - Live real-time countdown clocks ticking down to contest start.
+   - Prize tier categorization: 💎 Mega ($10k+), 🏆 Major ($1k-$10k), 🥇 Standard ($100+), 🏅 Swag.
+
+4. **1-Click Sync to Calendar**
+   - Download offline `.ICS` calendar alerts with pre-configured 1-hour alarms.
+   - Direct "Add to Google Calendar" button with pre-filled contest titles, prize details, and links.
+
+5. **Instant Ingestion of Any Contest Link**
+   - Paste any link (e.g., Codeforces blog entries, AtCoder posts, Hackathon portals) to trigger TinyFish Fetch and auto-index into your live radar feed.
+
+---
+
+## 🛠 Tech Stack
+
+- **Framework:** Next.js 16 (App Router + Turbopack)
+- **Styling:** Tailwind CSS v4 + coss.com/ui design system primitives
+- **AI Web Intelligence:**
+  - `TinyFishClient`: Search & Fetch endpoints
+  - `ParallelClient`: Search & Task endpoints
+- **Icons & Visuals:** `lucide-react`, `canvas-confetti`
+
+---
+
+## 📦 Getting Started
+
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Environment Variables
+Copy `.env.example` to `.env.local`:
+```bash
+cp .env.example .env.local
+```
+Add your API keys (the app has intelligent mock fallbacks if keys are not provided immediately):
+```env
+TINYFISH_API_KEY="your-tinyfish-api-key"
+PARALLEL_API_KEY="your-parallel-api-key"
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 3. Run Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) or production build on port 3001.
